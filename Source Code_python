@@ -1,0 +1,291 @@
+
+# IPL Data Analysis 
+
+# In[1]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+get_ipython().run_line_magic('matplotlib', 'inline')
+import seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
+
+
+# In[2]:
+
+
+match_data = pd.read_csv("C:\\Users\\chitr\\Desktop\\IPL Python\\IPL Dataset and Code\\match.csv")
+ball_data =  pd.read_csv("C:\\Users\\chitr\\Desktop\\IPL Python\\IPL Dataset and Code\\ball by ball.csv")
+
+
+# In[3]:
+
+
+match_data.head() #Printing the top 5 rows
+
+
+# In[4]:
+
+
+ball_data.head() #Printing the top 5 rows
+
+
+# In[83]:
+
+
+match_data.isnull().sum() #Check for null values in data set
+
+
+# In[6]:
+
+
+ball_data.isnull().sum() #Check for null values in data set
+
+
+# In[7]:
+
+
+print('Total matches played:', match_data.shape[0]) #Total matches played
+print('\n Cities played at:', match_data['city'].unique()) #unique venues for match
+print('\n Team participated:', match_data['team1'].unique()) #Teams participated in IPL
+
+
+# In[84]:
+
+
+#Extracting year values to get season or Year value
+
+match_data['Season'] = pd.DatetimeIndex(match_data['date']).year
+match_data.head()
+
+
+# In[85]:
+
+
+#total number of matches played each year
+
+match_per_season = match_data.groupby(['Season'])['id'].count().reset_index().rename(columns={'id':'matches'})
+match_per_season
+
+
+# In[86]:
+
+
+#plotting bar graph of total matches each year 
+
+sns.countplot(match_data['Season'])
+plt.xticks(rotation = 45, fontsize = 10)
+plt.yticks (fontsize = 10)
+plt.xlabel('Season', fontsize = 10)
+plt.ylabel('Count', fontsize = 10)
+plt.title("Total matches played in each seaso", fontsize = 10, fontweight = "bold")
+
+
+# In[87]:
+
+
+season_data=match_data[['id','Season']].merge(ball_data, left_on = 'id', right_on = 'id', how = 'left').drop('id', axis = 1)
+season_data.head()
+
+
+# In[90]:
+
+
+#Total runs scored in each season
+
+season=season_data.groupby(['Season'])['total_runs'].sum().reset_index()
+p=season.set_index('Season')
+ax = plt.axes()
+ax.set(facecolor = "White")
+sns.lineplot(data=p,palette="magma") 
+plt.title('Total runs in each season',fontsize=12,fontweight="bold")
+plt.show()
+
+
+# In[93]:
+
+
+#runs scored per match
+
+runs_per_season = pd.concat([match_per_season,season.iloc[:,1]], axis = 1)
+runs_per_season['Runs scored per match'] = runs_per_season['total_runs']/runs_per_season['matches']
+runs_per_season.set_index('Season', inplace = True)
+runs_per_season
+
+
+# In[122]:
+
+
+#number of toss won by each team
+
+toss = match_data['toss_winner'].value_counts()
+ax = plt.axes()
+ax.set(facecolor = 'white')
+sns.set(rc = {'figure.figsize':(7,7)},style = 'darkgrid')
+ax.set_title('No of tosses won by each team', fontsize = 15 , fontweight = "bold")
+sns.barplot(x = toss , y = toss.index, orient = 'h', palette = "icefire", saturation = 1)
+plt.xlabel('Num of tossed won')
+plt.ylabel ('Teams')
+plt.show()
+
+
+# In[141]:
+
+
+#toss decision across seasons
+
+ax = plt.axes()
+ax.set(facecolor = "white")
+sns.countplot(data = match_data, x = 'Season', hue = 'toss_decision', palette = "magma", saturation = 1)
+sns.set(rc = {'figure.figsize':(7,7)},style = 'darkgrid')
+plt.xticks(rotation = 90, fontsize = 15)
+plt.yticks(fontsize = 15)
+plt.xlabel('\n Season', fontsize = 15)
+plt.ylabel('\n Season', fontsize = 15)
+plt.title("Toss decision across season", fontsize = 12, fontweight = "bold")
+plt.show()
+
+
+# In[145]:
+
+
+match_data['result'].value_counts() #winner : chasing team or Bowling team 
+
+
+# In[146]:
+
+
+match_data.venue[match_data.result != 'runs'].mode() #best venue to run chase
+
+
+# In[147]:
+
+
+match_data.venue[match_data.result != 'wickets'].mode() #best venue to bat first
+
+
+# In[204]:
+
+
+match_data.venue[match_data.toss_winner=='Kolkata Knight Riders'][match_data.winner=='Kolkata Knight Riders'].mode()
+
+
+# In[205]:
+
+
+match_data.winner[match_data.result != 'runs'].mode() #best run chasing teams
+
+
+# In[206]:
+
+
+match_data.winner[match_data.result != 'wicket'].mode() #best defending team
+
+
+# In[208]:
+
+
+#winning the toss means winning the match ?
+
+toss = match_data['toss_winner'] == match_data['winner']
+plt.figure(figsize= (10,5))
+sns.countplot(toss)
+plt.show
+
+#output no clear evidence that winning the toss will result in winning the match
+
+
+# In[210]:
+
+
+#Choosing batting or bowling will result in win ?
+
+plt.figure(figsize = (12,4))
+sns.countplot(match_data.toss_decision[match_data.toss_winner == match_data.winner])
+plt.show()
+
+#Output - maximum number of time team deciding to field first turned out to be winner 
+#i.e.,there are higher chances of winning if you field first
+
+
+# In[215]:
+
+
+#player analysis : Virat Kohli
+
+player = (ball_data['batsman'] == 'V Kohli')
+df_kohli = ball_data[player]
+df_kohli.head()
+
+
+# In[220]:
+
+
+df_kohli['dismissal_kind'].value_counts().plot.pie(autopct= '%1.1f%%', shadow = True, rotatelabels = True)
+plt.title("Kohli Dismissals", fontweight = "bold", fontsize=15)
+plt.show()
+
+
+# In[221]:
+
+
+def count(df_kohli, runs):
+    return len(df_kohli[df_kohli['batsman_runs'] == runs])*runs
+
+
+# In[225]:
+
+
+print("Runs scored from 1's:",count(df_kohli,1))
+print("Runs scored from 2's:",count(df_kohli,2))
+print("Runs scored from 3's:",count(df_kohli,3))
+print("Runs scored from 4's:",count(df_kohli,4))
+print("Runs scored from 6's:",count(df_kohli,6))
+
+
+# In[232]:
+
+
+#maximum number of runs scored by player (top 10 scorer)
+
+runs = ball_data.groupby(['batsman'])['batsman_runs'].sum().reset_index()
+runs.columns = ['Batsman', 'runs']
+y = runs.sort_values(by='runs',ascending = False).head(10).reset_index().drop('index',axis =1)
+y
+
+
+# In[237]:
+
+
+#plotting
+
+ax=plt.axes()
+ax.set(facecolor = "white")
+sns.barplot(x=y['Batsman'], y = y['runs'], palette = "rocket", saturation = 1)
+plt.xticks (rotation = 90,fontsize = 10)
+plt.yticks (fontsize = 10)
+plt.xlabel('\n Player', fontsize = 15)
+plt.ylabel('Total Runs', fontsize = 15)
+plt.title('Top 10 Batsman in IPL', fontsize = 15,fontweight = "bold")
+
+
+# In[242]:
+
+
+#man of the match maximum times
+
+ax = plt.axes()
+ax.set(facecolor = "white")
+match_data.player_of_match.value_counts()[:10].plot(kind = 'bar')
+plt.xlabel('Players')
+plt.ylabel("Count")
+plt.title("Highest number of Man of the Match in IPL", fontsize = 15, fontweight = "bold")
+
+
+# In[ ]:
+
+
+
+
